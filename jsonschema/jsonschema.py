@@ -46,10 +46,10 @@ class JSONSchemaPlugin(plugin.PyangPlugin):
         ctx.implicit_errors = False
 
     def emit(self, ctx, modules, fd):
-        root_stmt = modules[0]
-        if ctx.opts.schema_debug:
-            logging.basicConfig(level=logging.DEBUG)
-            print("")
+        root_stmt = modules[0].i_groupings.get('smtp-group')
+        # if ctx.opts.schema_debug:
+        logging.basicConfig(level=logging.DEBUG)
+        print("")
         if ctx.opts.schema_path is not None:
             logging.debug("schema_path: %s", ctx.opts.schema_path)
             path = ctx.opts.schema_path
@@ -102,7 +102,7 @@ def find_stmt_by_path(module, path):
 
 
 def produce_schema(root_stmt):
-    logging.debug("in produce_schema: %s %s", root_stmt.keyword, root_stmt.arg)
+    logging.debug("in produce_schema: %s %s %s", root_stmt.keyword, root_stmt.arg, root_stmt)
     result = {}
 
     for child in root_stmt.i_children:
