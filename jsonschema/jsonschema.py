@@ -46,9 +46,31 @@ class JSONSchemaPlugin(plugin.PyangPlugin):
         ctx.implicit_errors = False
 
     def emit(self, ctx, modules, fd):
-        root_stmt = modules[0].i_groupings.get('smtp-group')
-        # if ctx.opts.schema_debug:
+        # root_stmt = modules[0].i_groupings.get('access-group')
+        # root_stmt = modules[0].i_groupings.get('applications-group')
+        # root_stmt = modules[0].i_groupings.get('vlans-group')
+        # root_stmt = modules[0].i_groupings.get('poe-group')
+        # root_stmt = modules[0].i_groupings.get('routing-options-group')
+        # root_stmt = modules[0].i_groupings.get('protocols-group')
+        # root_stmt = modules[0].i_groupings.get('routing-instances-group')
+        # root_stmt = modules[0].i_groupings.get('system-group')
+        # root_stmt = modules[0].i_groupings.get('policy-options-group')
+        # root_stmt = modules[0].i_groupings.get('services-group')
+        # root_stmt = modules[0].i_groupings.get('snmp-group')
+        # root_stmt = modules[0].i_groupings.get('interfaces-group')
+        # root_stmt = modules[0].i_groupings.get('forwarding-options-group')
+        # root_stmt = modules[0].i_groupings.get('security-group')
+        # root_stmt = modules[0].i_groupings.get('smtp-group')
+        root_stmt = modules[0]
         logging.basicConfig(level=logging.DEBUG)
+        logging.debug("root_stmt %s %s",root_stmt, root_stmt.i_children);
+        # If there are no children, pick the first element in groupings as root element
+        if len(root_stmt.i_children) is 0:
+            groupings = root_stmt.i_groupings
+            first_key = list(groupings.keys())[0]
+            root_stmt = groupings[first_key];
+            logging.debug("groupings %s %s",type(modules[0].i_groupings), first_key);
+        # if ctx.opts.schema_debug:
         print("")
         if ctx.opts.schema_path is not None:
             logging.debug("schema_path: %s", ctx.opts.schema_path)
@@ -69,9 +91,11 @@ class JSONSchemaPlugin(plugin.PyangPlugin):
                   "type": "object",
                   "properties": {}}
 
+        # Can't use json.dumps on pyang object
+        # fd.write(json.dumps(root_stmt))
+        # print(vars(root_stmt))
         schema = produce_schema(root_stmt)
         result["properties"].update(schema)
-
         fd.write(json.dumps(result, indent=2))
 
 def find_stmt_by_path(module, path):
@@ -146,12 +170,24 @@ def produce_type(type_stmt):
 
 def produce_leaf(stmt):
     logging.debug("in produce_leaf: %s %s", stmt.keyword, stmt.arg)
+    print(vars(stmt))
     arg = qualify_name(stmt)
 
     type_stmt = stmt.search_one('type')
     type_str = produce_type(type_stmt)
-
-    return {arg: type_str}
+    description_stmt = stmt.search_one('description')
+    # description_str = produce_type(description_stmt)
+    logging.debug('description123: %s %s', description_stmt,type(type_str));
+    # logging.debug('%s',{arg: type_str.update({'description': description_stmt})})
+    type_str.update
+    leaf_schema = dict()
+    leaf_schema.update(type_str)
+    if description_stmt is not None:
+        logging.debug('description_stmt %s %s', type(description_stmt),description_stmt.arg)
+        leaf_schema.update({'description': (description_stmt.arg)})
+    # logging.debug('%s',{arg: type_str.update({'hello':'hai'})})
+    return {arg: leaf_schema}
+    # return {arg: type_str.update({'description': description_stmt})}
 
 def produce_list(stmt):
     logging.debug("in produce_list: %s %s", stmt.keyword, stmt.arg)
