@@ -175,16 +175,23 @@ def produce_leaf(stmt):
 
     type_stmt = stmt.search_one('type')
     type_str = produce_type(type_stmt)
-    description_stmt = stmt.search_one('description')
     # description_str = produce_type(description_stmt)
-    logging.debug('description123: %s %s', description_stmt,type(type_str));
+    # logging.debug('description123: %s %s', description_stmt,type(type_str));
     # logging.debug('%s',{arg: type_str.update({'description': description_stmt})})
     type_str.update
     leaf_schema = dict()
     leaf_schema.update(type_str)
+    # populate description
+    description_stmt = stmt.search_one('description')
     if description_stmt is not None:
         logging.debug('description_stmt %s %s', type(description_stmt),description_stmt.arg)
         leaf_schema.update({'description': (description_stmt.arg)})
+
+    # populate default value
+    default_value_stmt = stmt.search_one('default')
+    if default_value_stmt is not None:
+        logging.debug('default_value_stmt %s %s', type(default_value_stmt),default_value_stmt.arg)
+        leaf_schema.update({'default': (default_value_stmt.arg)})
     # logging.debug('%s',{arg: type_str.update({'hello':'hai'})})
     return {arg: leaf_schema}
     # return {arg: type_str.update({'description': description_stmt})}
