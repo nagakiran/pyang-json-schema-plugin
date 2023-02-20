@@ -308,8 +308,12 @@ def string_trans(stmt):
 
 def enumeration_trans(stmt):
     logging.debug("in enumeration_trans with stmt %s %s", stmt.keyword, stmt.arg)
-    result = {"properties": {"type": {"enum": []}}}
+    result = {"properties": {"type": {"enum": [],"description":[]}}}
     for enum in stmt.search("enum"):
+        description_stmt = enum.search_one('description')
+        if description_stmt is not None:
+            logging.debug('enum description: %s',description_stmt.arg)
+            result["properties"]["type"]["description"].append(description_stmt.arg)
         result["properties"]["type"]["enum"].append(enum.arg)
     logging.debug("In enumeration_trans for %s, returning %s", stmt.arg, result)
     return result
