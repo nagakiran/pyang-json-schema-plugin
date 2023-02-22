@@ -192,7 +192,25 @@ def produce_leaf(stmt):
     if default_value_stmt is not None:
         logging.debug('default_value_stmt %s %s', type(default_value_stmt),default_value_stmt.arg)
         leaf_schema.update({'default': (default_value_stmt.arg)})
+
+    # populate length
+    length_stmt = type_stmt.search_one('length')
+    if length_stmt is not None:
+        logging.debug('length_stmt %s %s', type(length_stmt),length_stmt.arg)
+        # split by .. and populate minLength and maxLength
+        length_validation_str = length_stmt.arg
+        length_validation_arr = length_validation_str.split('..')
+        leaf_schema.update({'minLength': int(length_validation_arr[0]),'maxLength': int(length_validation_arr[1])})
     # logging.debug('%s',{arg: type_str.update({'hello':'hai'})})
+
+    # populate min/max range for numbers
+    range_stmt = type_stmt.search_one('range')
+    if range_stmt is not None:
+        logging.debug('range_stmt %s %s', type(range_stmt),range_stmt.arg)
+        # split by .. and populate minLength and maxLength
+        range_validation_str = range_stmt.arg
+        range_validation_arr = range_validation_str.split('..')
+        leaf_schema.update({'minimum': int(range_validation_arr[0]),'maximum': int(range_validation_arr[1])})
     return {arg: leaf_schema}
     # return {arg: type_str.update({'description': description_stmt})}
 
