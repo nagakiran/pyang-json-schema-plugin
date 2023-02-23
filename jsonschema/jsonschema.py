@@ -46,21 +46,6 @@ class JSONSchemaPlugin(plugin.PyangPlugin):
         ctx.implicit_errors = False
 
     def emit(self, ctx, modules, fd):
-        # root_stmt = modules[0].i_groupings.get('access-group')
-        # root_stmt = modules[0].i_groupings.get('applications-group')
-        # root_stmt = modules[0].i_groupings.get('vlans-group')
-        # root_stmt = modules[0].i_groupings.get('poe-group')
-        # root_stmt = modules[0].i_groupings.get('routing-options-group')
-        # root_stmt = modules[0].i_groupings.get('protocols-group')
-        # root_stmt = modules[0].i_groupings.get('routing-instances-group')
-        # root_stmt = modules[0].i_groupings.get('system-group')
-        # root_stmt = modules[0].i_groupings.get('policy-options-group')
-        # root_stmt = modules[0].i_groupings.get('services-group')
-        # root_stmt = modules[0].i_groupings.get('snmp-group')
-        # root_stmt = modules[0].i_groupings.get('interfaces-group')
-        # root_stmt = modules[0].i_groupings.get('forwarding-options-group')
-        # root_stmt = modules[0].i_groupings.get('security-group')
-        # root_stmt = modules[0].i_groupings.get('smtp-group')
         root_stmt = modules[0]
         logging.basicConfig(level=logging.DEBUG)
         logging.debug("root_stmt %s %s",root_stmt, root_stmt.i_children);
@@ -96,7 +81,7 @@ class JSONSchemaPlugin(plugin.PyangPlugin):
         # print(vars(root_stmt))
         schema = produce_schema(root_stmt)
         result["properties"].update(schema)
-        fd.write(json.dumps(result, indent=2))
+        # fd.write(json.dumps(result, indent=2))
 
 def find_stmt_by_path(module, path):
     logging.debug("in find_stmt_by_path with: %s %s path: %s", module.keyword, module.arg, path)
@@ -197,22 +182,26 @@ def produce_leaf(stmt):
     length_stmt = type_stmt.search_one('length')
     if length_stmt is not None:
         logging.debug('length_stmt %s %s', type(length_stmt),length_stmt.arg)
-        # split by .. and populate minLength and maxLength
+        # split by .. and populate minLength and maxLength for string
         length_validation_str = length_stmt.arg
         length_validation_arr = length_validation_str.split('..')
         leaf_schema.update({'minLength': int(length_validation_arr[0]),'maxLength': int(length_validation_arr[1])})
-    # logging.debug('%s',{arg: type_str.update({'hello':'hai'})})
 
     # populate min/max range for numbers
     range_stmt = type_stmt.search_one('range')
     if range_stmt is not None:
         logging.debug('range_stmt %s %s', type(range_stmt),range_stmt.arg)
-        # split by .. and populate minLength and maxLength
+        # split by .. and populate minimum and maximum for number
         range_validation_str = range_stmt.arg
         range_validation_arr = range_validation_str.split('..')
         leaf_schema.update({'minimum': int(range_validation_arr[0]),'maximum': int(range_validation_arr[1])})
+    
+    # populate "units" for leaf nodes
+    units_stmt = stmt.search_one('units')
+    if units_stmt is not None:
+        logging.debug('units_stmt %s %s', type(units_stmt),units_stmt.arg)
+        leaf_schema.update({'units': units_stmt.arg})
     return {arg: leaf_schema}
-    # return {arg: type_str.update({'description': description_stmt})}
 
 def produce_list(stmt):
     logging.debug("in produce_list: %s %s", stmt.keyword, stmt.arg)
@@ -222,6 +211,22 @@ def produce_list(stmt):
         result = {arg: {"type": "array", "items": []}}
     else:
         result = {"type": "object", "properties": {arg: {"type": "array", "items": []}}}
+
+    description_stmt = stmt.search_one('description')
+    if description_stmt is not None:
+        logging.debug('description_stmt %s %s', type(description_stmt),description_stmt.arg)
+        if stmt.parent.keyword != "list":
+            result[arg]["description"] = description_stmt.arg
+        else:
+            result["properties"][arg]["description"] = description_stmt.arg
+
+    max_elements_stmt = stmt.search_one('max-elements')
+    if max_elements_stmt is not None:
+        logging.debug('max_elements_stmt %s %s', type(max_elements_stmt),max_elements_stmt.arg)
+        if stmt.parent.keyword != "list":
+            result[arg]["maxItems"] = max_elements_stmt.arg
+        else:
+            result["properties"][arg]["maxItems"] = max_elements_stmt.arg
 
     if hasattr(stmt, 'i_children'):
         for child in stmt.i_children:
