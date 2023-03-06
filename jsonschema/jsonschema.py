@@ -127,7 +127,10 @@ def produce_type(type_stmt):
     logging.debug("In produce_type with: %s %s", type_stmt.keyword, type_stmt.arg)
     type_id = type_stmt.arg
 
-    if types.is_base_type(type_id):
+    if type_id in _junos_type_trans_tbl:
+        logging.debug("Processing junos_type_trans with: %s %s", type_stmt.keyword, type_stmt.arg)
+        type_str = junos_type_trans(type_id, type_stmt)
+    elif types.is_base_type(type_id):
         if type_id in _numeric_type_trans_tbl:
             type_str = numeric_type_trans(type_id)
         elif type_id in _other_type_trans_tbl:
@@ -385,6 +388,11 @@ def leafref_trans(stmt):
     result = {"type": "string"}
     return result
 
+def junos_trans(stmt):
+    logging.debug("in junos_trans with stmt %s %s", stmt.keyword, stmt.arg)
+    result = {"type": "string", "subtype": stmt.arg}
+    return result
+
 _other_type_trans_tbl = {
     # https://tools.ietf.org/html/draft-ietf-netmod-yang-json-02#section-6
     "string":                   string_trans,
@@ -397,8 +405,20 @@ _other_type_trans_tbl = {
     "leafref":                  leafref_trans
 }
 
+# These are on top of the basic types mentioned in YANGSchema (specific to JUNOS)
+_junos_type_trans_tbl = {
+    "jt:unreadable":            junos_trans,  
+    "jt:ipv4addr":              junos_trans,
+    "jt:ipaddr":                junos_trans,
+    "jt:ipv4prefix":            junos_trans,
+    "jt:mac-addr-prefix":       junos_trans
+}
+
 def other_type_trans(dtype, stmt):
     return _other_type_trans_tbl[dtype](stmt)
+
+def junos_type_trans(dtype, stmt):
+    return _junos_type_trans_tbl[dtype](stmt)
 
 def qualify_name(stmt):
     # From: draft-ietf-netmod-yang-json
