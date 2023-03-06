@@ -47,16 +47,15 @@ class JSONSchemaPlugin(plugin.PyangPlugin):
 
     def emit(self, ctx, modules, fd):
         root_stmt = modules[0]
-        logging.basicConfig(level=logging.DEBUG)
+        if ctx.opts.schema_debug:
+            logging.basicConfig(level=logging.DEBUG)
         logging.debug("root_stmt %s %s",root_stmt, root_stmt.i_children);
         # If there are no children, pick the first element in groupings as root element
-        if len(root_stmt.i_children) is 0:
+        if len(root_stmt.i_children) == 0:
             groupings = root_stmt.i_groupings
             first_key = list(groupings.keys())[0]
             root_stmt = groupings[first_key];
             logging.debug("groupings %s %s",type(modules[0].i_groupings), first_key);
-        # if ctx.opts.schema_debug:
-        print("")
         if ctx.opts.schema_path is not None:
             logging.debug("schema_path: %s", ctx.opts.schema_path)
             path = ctx.opts.schema_path
@@ -76,12 +75,9 @@ class JSONSchemaPlugin(plugin.PyangPlugin):
                   "type": "object",
                   "properties": {}}
 
-        # Can't use json.dumps on pyang object
-        # fd.write(json.dumps(root_stmt))
-        # print(vars(root_stmt))
         schema = produce_schema(root_stmt)
         result["properties"].update(schema)
-        # fd.write(json.dumps(result, indent=2))
+        fd.write(json.dumps(result, indent=2))
 
 def find_stmt_by_path(module, path):
     logging.debug("in find_stmt_by_path with: %s %s path: %s", module.keyword, module.arg, path)
@@ -155,15 +151,10 @@ def produce_type(type_stmt):
 
 def produce_leaf(stmt):
     logging.debug("in produce_leaf: %s %s", stmt.keyword, stmt.arg)
-    print(vars(stmt))
     arg = qualify_name(stmt)
 
     type_stmt = stmt.search_one('type')
     type_str = produce_type(type_stmt)
-    # description_str = produce_type(description_stmt)
-    # logging.debug('description123: %s %s', description_stmt,type(type_str));
-    # logging.debug('%s',{arg: type_str.update({'description': description_stmt})})
-    type_str.update
     leaf_schema = dict()
     leaf_schema.update(type_str)
     # populate description
@@ -185,7 +176,11 @@ def produce_leaf(stmt):
         # split by .. and populate minLength and maxLength for string
         length_validation_str = length_stmt.arg
         length_validation_arr = length_validation_str.split('..')
-        leaf_schema.update({'minLength': int(length_validation_arr[0]),'maxLength': int(length_validation_arr[1])})
+        # If it's fixed length
+        if len(length_validation_arr) == 1:
+            leaf_schema.update({'minLength': int(length_validation_arr[0]),'maxLength': int(length_validation_arr[0])})
+        else:
+            leaf_schema.update({'minLength': int(length_validation_arr[0]),'maxLength': int(length_validation_arr[1])})
 
     # populate min/max range for numbers
     range_stmt = type_stmt.search_one('range')
@@ -194,7 +189,8 @@ def produce_leaf(stmt):
         # split by .. and populate minimum and maximum for number
         range_validation_str = range_stmt.arg
         range_validation_arr = range_validation_str.split('..')
-        leaf_schema.update({'minimum': int(range_validation_arr[0]),'maximum': int(range_validation_arr[1])})
+        # Typecasting to float to accomodate decimal64 type
+        leaf_schema.update({'minimum': float(range_validation_arr[0]),'maximum': float(range_validation_arr[1])})
     
     # populate "units" for leaf nodes
     units_stmt = stmt.search_one('units')
@@ -254,6 +250,11 @@ def produce_leaf_list(stmt):
         logging.debug("Missing mapping of base type: %s %s, type: %s",
                       stmt.keyword, stmt.arg, type_id)
         result = {arg: {"type": "array", "items": [{"type": "string"}]}}
+
+    description_stmt = stmt.search_one('description')
+    if description_stmt is not None:
+        logging.debug('description_stmt %s %s', type(description_stmt),description_stmt.arg)
+        result[arg]["description"] = description_stmt.arg
     return result
 
 def produce_container(stmt):
